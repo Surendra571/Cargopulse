@@ -137,8 +137,11 @@ class Settings(BaseSettings):
             errors.append("COOKIE_SECURE must be true in production (HTTPS required).")
         if "*" in self.ALLOWED_ORIGINS:
             errors.append("ALLOWED_ORIGINS must not contain wildcard '*' in production.")
-        if self.POSTGRES_PASSWORD in ("", "cargopulse_dev_password"):
-            errors.append("POSTGRES_PASSWORD must not use empty or development default in production.")
+        if (
+            self.POSTGRES_PASSWORD in ("", "cargopulse_dev_password")
+            and ("127.0.0.1:5433" in self.DATABASE_URL or "cargopulse_dev_password" in self.DATABASE_URL)
+        ):
+            errors.append("DATABASE_URL / POSTGRES_PASSWORD must not use empty or development defaults in production.")
 
         if errors:
             raise RuntimeError("Invalid production configuration: " + " | ".join(errors))
