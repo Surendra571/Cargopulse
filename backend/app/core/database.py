@@ -50,24 +50,8 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def check_db_health() -> dict:
     """
-    Actively probes PostgreSQL database connectivity and response time.
+    Actively probes PostgreSQL database connectivity and response time using DATABASE_URL.
     """
-    # Quick non-blocking socket check first
-    try:
-        _, writer = await asyncio.wait_for(
-            asyncio.open_connection(settings.POSTGRES_SERVER, settings.POSTGRES_PORT),
-            timeout=1.5
-        )
-        writer.close()
-        await writer.wait_closed()
-    except Exception as exc:
-        return {
-            "status": "unhealthy",
-            "database": "postgresql",
-            "connected": False,
-            "error": f"PostgreSQL port closed at {settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}",
-        }
-
     async def _probe():
         async with async_engine.connect() as conn:
             result = await conn.execute(text("SELECT 1"))
@@ -77,7 +61,7 @@ async def check_db_health() -> dict:
         return {"status": "unhealthy", "database": "postgresql", "connected": False}
 
     try:
-        return await asyncio.wait_for(_probe(), timeout=2.0)
+        return await asyncio.wait_for(_probe(), timeout=3.0)
     except Exception as exc:
         logger.warning(f"Database health check query failed: {exc}")
         return {"status": "unhealthy", "database": "postgresql", "connected": False, "error": str(exc)}
