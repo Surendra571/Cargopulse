@@ -58,6 +58,26 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://cargopulse_user@127.0.0.1:5433/cargopulse"
     DATABASE_SYNC_URL: str = "postgresql+psycopg2://cargopulse_user@127.0.0.1:5433/cargopulse"
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_async_db_url(cls, v: str) -> str:
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return v.replace("postgres://", "postgresql+asyncpg://", 1)
+            if v.startswith("postgresql://"):
+                return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
+    @field_validator("DATABASE_SYNC_URL", mode="before")
+    @classmethod
+    def normalize_sync_db_url(cls, v: str) -> str:
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return v.replace("postgres://", "postgresql+psycopg2://", 1)
+            if v.startswith("postgresql://"):
+                return v.replace("postgresql://", "postgresql+psycopg2://", 1)
+        return v
+
     # Database Connection Pool Settings
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 10
