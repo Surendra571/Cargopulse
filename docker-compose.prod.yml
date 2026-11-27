@@ -1,0 +1,90 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: cargopulse_prod_backend
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      COOKIE_SECURE: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - epod_storage:/app/storage/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/v1/healthz/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cargopulse_net
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: cargopulse_prod_worker
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=info --concurrency=4 -Q default,telemetry,notifications,reconciliation
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - epod_storage:/app/storage/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app.celery_app inspect ping -d celery@$$HOSTNAME"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - cargopulse_net
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: cargopulse_prod_beat
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+    command: celery -A app.core.celery_app.celery_app beat --loglevel=info
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - cargopulse_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+    container_name: cargopulse_prod_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - cargopulse_net
+
+volumes:
+  epod_storage:
+
+networks:
+  cargopulse_net:
+    driver: bridge
