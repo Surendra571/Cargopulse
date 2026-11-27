@@ -21,7 +21,7 @@ async_engine: AsyncEngine = create_async_engine(
     pool_timeout=settings.DB_POOL_TIMEOUT,
     pool_recycle=settings.DB_POOL_RECYCLE,
     pool_pre_ping=True,  # Test connection viability before handing to caller
-    connect_args={"timeout": 10, "ssl": False},
+    connect_args={"timeout": 10} if settings.ENVIRONMENT.lower() == "production" else {"timeout": 10, "ssl": False},
 )
 
 # Create Async Session Factory
